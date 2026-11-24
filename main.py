@@ -12,6 +12,9 @@ Version history:
   line — a newline inside it would break the fortune-cookie shape) and
   a read-back verification after writing, so a failed or partial write
   is caught instead of silently passing.
+- v3: rewritten in a fresh builder session (same logic, same entry line,
+  no calibration change) so the file is authored by this session's
+  builder — the previous builder session froze before bundling.
 
 The line (80 characters, one balanced sentence):
     Your legacy code is not a mess; it is a letter from someone who ran out of time.
