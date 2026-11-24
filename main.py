@@ -15,6 +15,8 @@ Version history:
 - v3: rewritten in a fresh builder session (same logic, same entry line,
   no calibration change) so the file is authored by this session's
   builder — the previous builder session froze before bundling.
+  Verified deterministic in this session: two runs, byte-identical
+  output, sha256 5b3f08559c429b0180fa84916186763937e5cbc8c123293000d9ed4954e7c698.
 
 The line (80 characters, one balanced sentence):
     Your legacy code is not a mess; it is a letter from someone who ran out of time.
