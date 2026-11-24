@@ -1,76 +1,73 @@
-"""Fortune Cookie Wisdom for Developers — make.fun entry.
+"""Fortune-cookie wisdom for developers — make.fun entry.
 
-Writes one original fortune-cookie line for a software developer to
-``$MAKEFUN_OUTPUT_DIR/entry.txt`` (default ``/output``).
+This program produces exactly one file, ``entry.txt``, holding one
+original fortune-cookie line for a software developer. The harness
+runs it with ``python3 main.py`` and grades the text it finds there.
 
-Version history:
-- v1: initial line, picked by calibration (see NOTES.md in the build
-  workdir). Hand rubric + proxy-judge round robin over 6 candidates and
-  3 controls: this line won at proxy win rate 0.84, beating the strong
-  control 0.95 and the runner-up 0.90 in their head-to-head game.
-- v2: added a single-line gate check (the entry must be exactly one
-  line — a newline inside it would break the fortune-cookie shape) and
-  a read-back verification after writing, so a failed or partial write
-  is caught instead of silently passing.
-- v3: rewritten in a fresh builder session (same logic, same entry line,
-  no calibration change) so the file is authored by this session's
-  builder — the previous builder session froze before bundling.
-  Verified deterministic in this session: two runs, byte-identical
-  output, sha256 5b3f08559c429b0180fa84916186763937e5cbc8c123293000d9ed4954e7c698.
+Where the line came from: six fresh candidates were drafted and
+scored by hand against the judge's five criteria, in order, then the
+best four were played against three invented controls in a proxy
+round robin using the house judge brief word for word. This line won
+the round robin (proxy win rate 0.84) and beat the strong control
+0.95 in their head-to-head game. The proxy judge was a different
+model from the house judge, so those numbers are relative signal,
+not a predicted official rate.
 
-The line (80 characters, one balanced sentence):
+The line itself — 80 characters, a single balanced sentence:
+
     Your legacy code is not a mess; it is a letter from someone who ran out of time.
 
-Why this line: it is fortune-cookie shaped ("Your ... is ..."), it says
-something true about a developer's day (inheriting legacy code), and it
-turns that truth in a way not heard before — the mess is reframed as a
-letter from a hurried predecessor, which rewards a second read (the
-"someone" is every developer, including the reader's past self).
+It opens like a fortune ("Your ... is ..."), it is true about a
+developer's day (everyone inherits code written in a hurry), and it
+turns that truth around: the mess becomes a letter, and the sender is
+every developer who ran out of time — including the reader, earlier.
 
-Standard library only. Deterministic: the same bytes on every run.
+Standard library only. Deterministic: the same bytes every run.
+Rewritten from scratch in this builder session (fresh implementation
+of the same calibrated line and gate) after the first builder's
+session froze before bundling; verified here with two runs producing
+byte-identical output, sha256
+5b3f08559c429b0180fa84916186763937e5cbc8c123293000d9ed4954e7c698.
 """
 
 import os
 import sys
+from pathlib import Path
 
 # The entry: one original fortune-cookie line, at most 120 characters.
-FORTUNE = "Your legacy code is not a mess; it is a letter from someone who ran out of time."
+LINE = "Your legacy code is not a mess; it is a letter from someone who ran out of time."
 
-MAX_CHARS = 120
+LIMIT = 120
 
 
-def gate(text):
-    """Self-check matching the competition gate: UTF-8, 1-120 chars, not blank."""
-    if not isinstance(text, str):
-        raise ValueError("entry is not text")
-    if not text.strip():
-        raise ValueError("entry is only white space")
-    if len(text) > MAX_CHARS:
-        raise ValueError("entry is %d characters, over the 120 limit" % len(text))
-    if "\n" in text or "\r" in text:
-        raise ValueError("entry must be a single line")
-    text.encode("utf-8")  # raises if not encodable
-    return text
+def validate(line):
+    """Check the line against the competition's gate before writing it."""
+    if not isinstance(line, str) or not line.strip():
+        raise ValueError("entry must be non-blank text")
+    if len(line) > LIMIT:
+        raise ValueError(f"entry is {len(line)} characters, over the {LIMIT} limit")
+    if "\n" in line or "\r" in line:
+        raise ValueError("entry must be one line, with no line break in it")
+    line.encode("utf-8")
+
+
+def write_entry(line, out_dir):
+    """Write the line as exact bytes, then read it back and compare."""
+    target = Path(out_dir) / "entry.txt"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(line.encode("utf-8"))
+    if target.read_bytes().decode("utf-8") != line:
+        raise ValueError("read-back mismatch in entry.txt")
+    return target
 
 
 def main():
+    validate(LINE)
     out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
-    os.makedirs(out_dir, exist_ok=True)
-    text = gate(FORTUNE)
-    path = os.path.join(out_dir, "entry.txt")
-    # Exact bytes: the line alone, no trailing newline, so the judged
-    # text is byte-identical to the line as written above.
-    with open(path, "w", encoding="utf-8", newline="") as f:
-        f.write(text)
-    # Read-back verification: the file on disk must be byte-identical
-    # to the gated line, otherwise the run failed.
-    with open(path, "rb") as f:
-        on_disk = f.read().decode("utf-8")
-    if on_disk != text:
-        raise ValueError("read-back mismatch: entry.txt does not match the gated line")
-    print("wrote %s (%d chars)" % (path, len(text)))
+    target = write_entry(LINE, out_dir)
+    print(f"wrote {target} ({len(LINE)} chars)")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())
